@@ -1,0 +1,109 @@
+#include "TestTexture2D.h"
+
+
+#include "Renderer.h"
+#include "vendor/imgui/imgui.h"
+#include "VertexBuffer.h"
+#include "VertexBufferLayout.h"
+#include "texture.h"
+
+#include"vendor/glm/glm.hpp"
+#include"vendor/glm/gtc/matrix_transform.hpp"
+
+
+
+test::TestTexture2D::TestTexture2D()
+	:m_TranslationA(200,200,0),m_TranslationB(400,200,0),
+		m_proj(glm::ortho(0.0f, 960.0f, 0.0f, 540.0f, -1.0f, 1.0f)),
+		m_view(glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0)))
+{
+	float positions[] = {
+		-50.0f,-50.0f,0.0f,0.0f,
+
+		50.0f,-50.0f,1.0f,0.0f,
+
+		50.0f,50.0f,1.0f,1.0f,
+
+		-50.0f,50.0f,0.0f,1.0f
+	};
+
+	unsigned int indices[] = {
+		0,1,2,
+
+		2,3,0
+	};
+
+	GLLogCall(glEnable(GL_BLEND));
+	GLLogCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+	
+	m_vao = std::make_unique<VertexArray>();
+	
+
+
+
+	VertexArray va;
+	m_vb=std::make_unique<VertexBuffer>(positions, 4 * 4 * sizeof(float));
+
+	VertexBufferLayout layout;
+	layout.Push < float>(2);
+	layout.Push < float>(2);
+
+	m_vao->AddBuffer(*m_vb, layout);
+	m_ib = std::make_unique<IndexBuffer>(indices,6);
+	
+	
+	m_shader = std::make_unique<Shader>("resources/shader/Basic.shader");
+	m_shader->Bind();
+
+	m_shader->Uniform4f("u_Color", 0.8f, 0.3f, 0.8f, 1.0f);
+	m_texture=std::make_unique<Texture>("resources/Textures/emoji.png");
+	
+	m_shader->Uniform1i("u_Texture", 0);
+
+
+
+
+}
+
+test::TestTexture2D::~TestTexture2D()
+{
+}
+
+void test::TestTexture2D::OnUpdate(float deltatime)
+{
+}
+
+void test::TestTexture2D::OnRender()
+{
+	GLLogCall(glClearColor(0.0f,0.0f,0.0f,0.0f));
+	GLLogCall(glClear(GL_COLOR_BUFFER_BIT));
+
+	Renderer renderer;
+
+	m_texture->Bind();
+
+	{
+		glm::mat4 model = glm::translate(glm::mat4(1.0f), m_TranslationA);
+		glm::mat4 mvp = m_proj * m_view * model;
+		m_shader->Bind();
+		m_shader->SetUniformMat4("u_MVP", mvp);
+		renderer.Draw(*m_vao, *m_ib, *m_shader);
+	}
+	{
+		glm::mat4 model = glm::translate(glm::mat4(1.0f), m_TranslationB);
+		glm::mat4 mvp = m_proj * m_view * model;
+		m_shader->Bind();
+		m_shader->SetUniformMat4("u_MVP", mvp);
+		renderer.Draw(*m_vao, *m_ib, *m_shader);
+	}
+
+}
+
+void test::TestTexture2D::OnImguiRender()
+{
+	ImGui::SliderFloat3("Translation A", &m_TranslationA.x, 0.0f, 960.0f);
+	ImGui::SliderFloat3("Translation B", &m_TranslationB.x, 0.0f, 960.0f);
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+}
